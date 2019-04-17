@@ -1,0 +1,102 @@
+slug: heat-clinic-sandbox
+id: uwwyxyhd4ar4
+type: sandbox
+title: Heat Clinic Demo
+teaser: Live Consul Connect demo with virtual machines
+description: Live Consul Connect demo with virtual machines
+icon: https://storage.googleapis.com/instruqt-frontend/assets/hashicorp/tracks/consul.png
+tags:
+- consul
+- ' connect'
+owner: hashicorp
+developers:
+- todd@hashicorp.com
+private: true
+published: false
+challenges:
+- slug: launch-the-demo
+  id: 3bj2ddeeyzv3
+  type: challenge
+  title: Launch the demo
+  teaser: Launch the Heat Clinic demo
+  assignment: |+
+    ## Introduction
+
+    This environment presents a classic 3-tier E-Commerce application written in Java. There is a web tier, an app server tier, and a database tier, spread across six virtual machines:
+
+      * `demo-00-consul` - Consul and Vault server
+      * `demo-01-mysql` - Database server
+      * `demo-02-site` and `demo-03-site` - Broadleaf Commerce app servers
+      * `demo-04-admin` - Broadleaf Commerce admin server
+      * `demo-05-nginx` - Nginx reverse proxy server
+
+    Each of those machines has a Consul agent on it. The agents are all started and running, and have registered services with Consul by placing files in `/etc/consul.d`. You can see the configuration files in the File Browser.
+
+    Across the top of this browser window, you see three tabs:
+
+      * **Consul Shell** - Bash shell on the Consul/Vault server. Try typing `consul members` or `consul catalog services` to see it in action.
+      * **File Browser** - Editor for Consul configuration files on `demo-02-site`.
+      * **Consul UI** - Web UI for Consul.
+      * **Heat Clinic** - Live view of the application served by Nginx.
+
+    ## Consul Connect
+
+    Each of the services is fronted by a Consul Connect proxy. The proxy takes care of mutually authenticating connections between services using mTLS certificates. It also confirms whether a service has authorization to talk to other services by checking the _intentions_ declared in Consul.
+
+    For example, when the app server on `demo-02-site` wants to talk to the MySQL database on `demo-01-mysql`, the following sequence takes place:
+
+      1. Java opens a connection to localhost:3306 (the _downstream proxy_).
+      2. Consul searches its catalog for the **db** service proxy and connects to it (the _upstream proxy_).
+      3. The proxies exchange mTLS certificates and cross-check the peer's certificate. The certificate name must match the name of the peer service, and both certificates must be signed by the same Certificate Authority. Note that Consul takes care of all of this automatically and transparently to the application.
+      4. The downstream proxy checks with Consul to see if an intention will authorize it to talk to the upstream. If not, the connection is aborted.
+      5. Otherwise, the connection proceeds. A layer-4 tunnel is established between services. Java can now talk to MySQL as if it were running on localhost.
+
+    For this demo, the intentions are set up as follows:
+
+      1. The "web" service is allowed to talk to "admin" and "app".
+      2. "Admin" and "app" are allowed to talk to "db".
+      3. All other connections are denied.
+
+    You can confirm this by going to the "Consul UI" tab and clicking on **Intentions**.
+
+    ## Experiment #1
+
+      1. Flip the intention for "web" to "app" in the UI, or by typing `consul intention create -replace -deny web app".
+      2. Reload the Heat Clinic and you should get a 502 error from Nginx.
+      3. Flip the intention back to "allow" and reload again. The Heat Clinic is back!
+
+    ## Experiment #2
+
+      1. In the shell, type `dig @localhost -p 8600 app.service.consul. SRV`. Observe that it returns entries for two app servers.
+      2. Log into one of the app servers with `ssh demo-02-site` or `ssh demo-03-site` and stop the app server with `systemctl stop broadleaf-site`.
+      3. Go to the Consul UI tab. The app service should now show that one of the app servers is failing its health check.
+      4. Repeat the `dig` command and you'll see only one entry. Consul has automatically removed the failing app server from DNS.
+      5. Reload the Heat Clinic tab and the site will still come up. Consul is directing web traffic to just the healthy servers.
+
+  notes:
+  - type: text
+    contents: |
+      # Consul Connect Demo: Heat Clinic
+      Please wait while the demo environment is launched.
+      Once the Start button appears, the environment is ready.
+  tabs:
+  - title: Consul Shell
+    type: terminal
+    hostname: demo-00-consul
+  - title: File Browser
+    type: code
+    hostname: demo-02-site
+    path: /etc/consul.d
+  - title: Consul UI
+    type: service
+    hostname: demo-00-consul
+    path: /ui/
+    port: 8500
+  - title: Heat Clinic
+    type: service
+    hostname: demo-05-nginx
+    path: /
+    port: 443
+  difficulty: basic
+  timelimit: 1800
+checksum: "4248333781837766694"

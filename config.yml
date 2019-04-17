@@ -1,0 +1,32 @@
+version: "2"
+virtualmachines:
+- name: demo-04-admin
+  image: heat-clinic-demo/heat-clinic
+  shell: /bin/bash
+  machine_type: g1-small
+  pool_size: 1
+- name: demo-05-nginx
+  image: heat-clinic-demo/heat-clinic
+  shell: /bin/bash
+  machine_type: g1-small
+  pool_size: 1
+- name: demo-00-consul
+  image: heat-clinic-demo/heat-clinic
+  shell: /bin/bash
+  machine_type: g1-small
+  pool_size: 1
+- name: demo-01-mysql
+  image: heat-clinic-demo/heat-clinic
+  shell: /bin/bash
+  machine_type: g1-small
+  pool_size: 1
+- name: demo-02-site
+  image: heat-clinic-demo/heat-clinic
+  shell: /bin/bash
+  machine_type: g1-small
+  pool_size: 1
+- name: demo-03-site
+  image: heat-clinic-demo/heat-clinic
+  shell: /bin/bash
+  machine_type: g1-small
+  pool_size: 1

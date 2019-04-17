@@ -1,0 +1,24 @@
+#!/bin/bash -e
+
+. /etc/profile.d/consul.sh
+
+#############################################################################
+# Configure and start Consul service
+#############################################################################
+
+cd /etc/consul.d 
+mv available/retry-join-instruqt.json .
+mv available/client.json . 
+mv available/service-web.json . 
+
+systemctl enable consul
+systemctl start consul
+
+#############################################################################
+# Configure and start Nginx web server
+#############################################################################
+
+ln -sf /etc/nginx/sites-available/reverse-proxy.conf /etc/nginx/sites-enabled 
+
+systemctl enable nginx
+systemctl start nginx

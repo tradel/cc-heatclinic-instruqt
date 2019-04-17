@@ -1,0 +1,77 @@
+#! /bin/bash -e
+
+. /etc/profile.d/consul.sh
+
+#############################################################################
+# Configure and start Consul service
+#############################################################################
+
+cd /etc/consul.d 
+mv available/retry-join-instruqt.json . || true
+mv available/client.json . || true
+mv available/service-app.json . || true
+
+systemctl enable consul
+systemctl start consul
+
+echo "Waiting for Consul to start..."
+while [[ -z $(curl -fsSL ${CONSUL_HTTP_ADDR}/v1/status/leader) ]]
+do
+    sleep 1
+done 
+
+echo "Waiting for Connect proxy to register..."
+host=$(hostname)
+while [[ -z $(consul catalog services -node=$host | grep proxy) ]]
+do
+    sleep 1 
+done
+
+#############################################################################
+# Get database configuration from Vault
+#############################################################################
+
+export VAULT_ADDR=http://demo-00-consul:8200
+export VAULT_TOKEN=$(consul kv get config/vault/token)
+
+json=$(vault kv get -format=json kv/bcl/database)
+dbname=$(echo $json | jq -r .data.data.database)
+username=$(echo $json | jq -r .data.data.username)
+password=$(echo $json | jq -r .data.data.password)
+
+#############################################################################
+# Wait for MySQL to start
+#############################################################################
+
+echo "Waiting for MySQL to respond..."
+while [[ ! $(/usr/lib/nagios/plugins/check_mysql -H 127.0.0.1 -P 3306 -u ${username} -p ${password}) ]]
+do
+    sleep 1
+done
+
+#############################################################################
+# Start Apache Solr index server
+#############################################################################
+
+systemctl enable solr 
+systemctl start solr
+
+#############################################################################
+# Configure and start Broadleaf E-Commerce site server
+#############################################################################
+
+echo "Creating properties file for Broadleaf..."
+src=/etc/consul-template/common-shared.properties.ctmpl
+dest=/opt/DemoSite/core/src/main/resources/runtime-properties/common-shared.properties
+consul-template -once \
+    -consul-addr=${CONSUL_HTTP_ADDR} \
+    -vault-addr=${VAULT_ADDR} \
+    -vault-token=${VAULT_TOKEN} \
+    -vault-renew-token=false \
+    -template=${src}:${dest}
+
+cd /opt/DemoSite 
+mvn install
+
+systemctl enable broadleaf-site
+systemctl start broadleaf-site

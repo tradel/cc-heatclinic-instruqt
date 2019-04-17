@@ -1,0 +1,18 @@
+#! /bin/bash
+
+. /etc/profile.d/consul.sh
+
+#############################################################################
+# Configure and start Consul service
+#############################################################################
+
+cd /etc/consul.d 
+mv available/retry-join-instruqt.json .
+mv available/client.json .
+mv available/service-db.json .
+
+systemctl enable consul
+systemctl start consul
+
+systemctl enable mysql 
+systemctl start mysql 
